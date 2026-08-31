@@ -9,8 +9,13 @@ const { createClient } = require("@supabase/supabase-js");
 // ======================================================
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
+
 const SUPABASE_SERVICE_ROLE_KEY =
     process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const SUPABASE_PUBLISHABLE_KEY =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY;
 
 if (
     !SUPABASE_URL ||
@@ -20,6 +25,16 @@ if (
         "Variabili Supabase mancanti."
     );
 }
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error(
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY mancante."
+    );
+}
+
+// ======================================================
+// CLIENT ADMIN
+// ======================================================
 
 const supabaseAdmin =
     createClient(
@@ -37,14 +52,11 @@ const supabaseAdmin =
 // FUNZIONE PRINCIPALE
 // ======================================================
 
-module.exports = async function handler(
-    req,
-    res
-) {
+module.exports = async function handler(req, res) {
 
-    // --------------------------------------------------
+    // ==================================================
     // METODO
-    // --------------------------------------------------
+    // ==================================================
 
     if (
         req.method !== "GET" &&
@@ -57,20 +69,17 @@ module.exports = async function handler(
 
     }
 
-
     try {
 
-        // ==============================================
+        // ==================================================
         // CONTROLLO TOKEN
-        // ==============================================
+        // ==================================================
 
         const authorization =
             req.headers.authorization || "";
 
         if (
-            !authorization.startsWith(
-                "Bearer "
-            )
+            !authorization.startsWith("Bearer ")
         ) {
 
             return res.status(401).json({
@@ -79,45 +88,55 @@ module.exports = async function handler(
 
         }
 
-
         const token =
-            authorization.replace(
-                "Bearer ",
-                ""
-            );
+            authorization.substring(7);
 
+        if (!token) {
 
-        // ==============================================
-        // CLIENT SUPABASE DELL'UTENTE
-        // ==============================================
+            return res.status(401).json({
+                error: "Token mancante."
+            });
+
+        }
+
+        // ==================================================
+        // CLIENT SUPABASE UTENTE
+        // ==================================================
 
         const supabaseUser =
             createClient(
                 SUPABASE_URL,
-                process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-                process.env.SUPABASE_PUBLISHABLE_KEY
+                SUPABASE_PUBLISHABLE_KEY,
+                {
+                    auth: {
+                        autoRefreshToken: false,
+                        persistSession: false
+                    }
+                }
             );
 
-
-        // ==============================================
+        // ==================================================
         // VERIFICA UTENTE
-        // ==============================================
+        // ==================================================
 
         const {
-            data: {
-                user
-            },
+            data: userData,
             error: userError
         } =
-            await supabaseUser.auth.getUser(
-                token
-            );
+            await supabaseUser.auth.getUser(token);
 
+        const user =
+            userData?.user;
 
         if (
             userError ||
             !user
         ) {
+
+            console.error(
+                "Errore autenticazione:",
+                userError
+            );
 
             return res.status(401).json({
                 error: "Sessione non valida."
@@ -125,10 +144,9 @@ module.exports = async function handler(
 
         }
 
-
-        // ==============================================
+        // ==================================================
         // CONTROLLO PROFILO ADMIN
-        // ==============================================
+        // ==================================================
 
         const {
             data: profile,
@@ -145,7 +163,6 @@ module.exports = async function handler(
                 )
                 .maybeSingle();
 
-
         if (profileError) {
 
             console.error(
@@ -160,7 +177,6 @@ module.exports = async function handler(
 
         }
 
-
         if (
             !profile ||
             profile.ruolo !== "admin" ||
@@ -173,7 +189,6 @@ module.exports = async function handler(
             });
 
         }
-
 
         // ==================================================
         // GET - ELENCO UTENTI
@@ -191,7 +206,6 @@ module.exports = async function handler(
                         perPage: 1000
                     });
 
-
             if (error) {
 
                 console.error(
@@ -206,11 +220,10 @@ module.exports = async function handler(
 
             }
 
-
             return res.status(200).json({
 
                 users:
-                    data.users.map(
+                    (data?.users || []).map(
                         user => ({
 
                             id:
@@ -235,7 +248,6 @@ module.exports = async function handler(
 
         }
 
-
         // ==================================================
         // POST - CREA UTENTE
         // ==================================================
@@ -244,7 +256,6 @@ module.exports = async function handler(
 
             const body =
                 req.body || {};
-
 
             if (
                 body.action !== "create"
@@ -257,7 +268,6 @@ module.exports = async function handler(
 
             }
 
-
             const email =
                 String(
                     body.email || ""
@@ -265,12 +275,10 @@ module.exports = async function handler(
                 .trim()
                 .toLowerCase();
 
-
             const password =
                 String(
                     body.password || ""
                 );
-
 
             if (
                 !email ||
@@ -284,7 +292,6 @@ module.exports = async function handler(
 
             }
 
-
             if (
                 password.length < 6
             ) {
@@ -296,10 +303,9 @@ module.exports = async function handler(
 
             }
 
-
-            // ------------------------------------------
+            // ==================================================
             // CREA ACCOUNT SUPABASE
-            // ------------------------------------------
+            // ==================================================
 
             const {
                 data,
@@ -319,7 +325,6 @@ module.exports = async function handler(
 
                     });
 
-
             if (error) {
 
                 console.error(
@@ -334,10 +339,9 @@ module.exports = async function handler(
 
             }
 
-
-            // ------------------------------------------
+            // ==================================================
             // CREA PROFILO
-            // ------------------------------------------
+            // ==================================================
 
             const {
                 error: profileInsertError
@@ -360,7 +364,6 @@ module.exports = async function handler(
 
                     });
 
-
             if (profileInsertError) {
 
                 console.error(
@@ -368,15 +371,13 @@ module.exports = async function handler(
                     profileInsertError
                 );
 
-
-                // Se il profilo non viene creato,
-                // eliminiamo anche l'account appena creato.
+                // Elimina l'account se il profilo
+                // non viene creato correttamente.
 
                 await supabaseAdmin.auth.admin
                     .deleteUser(
                         data.user.id
                     );
-
 
                 return res.status(500).json({
                     error:
@@ -385,10 +386,9 @@ module.exports = async function handler(
 
             }
 
-
-            // ------------------------------------------
+            // ==================================================
             // RISPOSTA
-            // ------------------------------------------
+            // ==================================================
 
             return res.status(201).json({
 
