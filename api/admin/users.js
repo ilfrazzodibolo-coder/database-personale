@@ -1,78 +1,81 @@
-import { createClient } from "@supabase/supabase-js";
+// ======================================================
+// API ADMIN - GESTIONE UTENTI
+// ======================================================
 
-const SUPABASE_URL =
-    process.env.SUPABASE_URL;
+const { createClient } = require("@supabase/supabase-js");
 
+// ======================================================
+// CONFIGURAZIONE
+// ======================================================
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY =
     process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+if (
+    !SUPABASE_URL ||
+    !SUPABASE_SERVICE_ROLE_KEY
+) {
+    throw new Error(
+        "Variabili Supabase mancanti."
+    );
+}
 
-// Client ADMIN
-// Questa chiave rimane SOLO sul server Vercel.
-// NON inserirla mai in app.js.
-
-const adminClient =
+const supabaseAdmin =
     createClient(
         SUPABASE_URL,
-        SUPABASE_SERVICE_ROLE_KEY
+        SUPABASE_SERVICE_ROLE_KEY,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
     );
-
 
 // ======================================================
 // FUNZIONE PRINCIPALE
 // ======================================================
 
-export default async function handler(
+module.exports = async function handler(
     req,
     res
 ) {
 
+    // --------------------------------------------------
+    // METODO
+    // --------------------------------------------------
+
+    if (
+        req.method !== "GET" &&
+        req.method !== "POST"
+    ) {
+
+        return res.status(405).json({
+            error: "Metodo non consentito."
+        });
+
+    }
+
+
     try {
 
-        // --------------------------------------------------
-        // Controlla metodo
-        // --------------------------------------------------
-
-        if (
-            ![
-                "GET",
-                "POST",
-                "DELETE",
-                "PATCH"
-            ].includes(req.method)
-        ) {
-
-            return res
-                .status(405)
-                .json({
-                    error:
-                        "Metodo non consentito."
-                });
-
-        }
-
-
-        // --------------------------------------------------
-        // Recupera token dell'utente
-        // --------------------------------------------------
+        // ==============================================
+        // CONTROLLO TOKEN
+        // ==============================================
 
         const authorization =
-            req.headers.authorization;
-
+            req.headers.authorization || "";
 
         if (
-            !authorization ||
             !authorization.startsWith(
                 "Bearer "
             )
         ) {
 
-            return res
-                .status(401)
-                .json({
-                    error:
-                        "Token mancante."
-                });
+            return res.status(401).json({
+                error: "Autenticazione richiesta."
+            });
 
         }
 
@@ -84,9 +87,21 @@ export default async function handler(
             );
 
 
-        // --------------------------------------------------
-        // Verifica l'utente
-        // --------------------------------------------------
+        // ==============================================
+        // CLIENT SUPABASE DELL'UTENTE
+        // ==============================================
+
+        const supabaseUser =
+            createClient(
+                SUPABASE_URL,
+                process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+                process.env.SUPABASE_PUBLISHABLE_KEY
+            );
+
+
+        // ==============================================
+        // VERIFICA UTENTE
+        // ==============================================
 
         const {
             data: {
@@ -94,7 +109,7 @@ export default async function handler(
             },
             error: userError
         } =
-            await adminClient.auth.getUser(
+            await supabaseUser.auth.getUser(
                 token
             );
 
@@ -104,28 +119,25 @@ export default async function handler(
             !user
         ) {
 
-            return res
-                .status(401)
-                .json({
-                    error:
-                        "Sessione non valida."
-                });
+            return res.status(401).json({
+                error: "Sessione non valida."
+            });
 
         }
 
 
-        // --------------------------------------------------
-        // Controlla che sia ADMIN
-        // --------------------------------------------------
+        // ==============================================
+        // CONTROLLO PROFILO ADMIN
+        // ==============================================
 
         const {
             data: profile,
             error: profileError
         } =
-            await adminClient
+            await supabaseAdmin
                 .from("profili")
                 .select(
-                    "id, ruolo, attivo"
+                    "id, email, ruolo, attivo"
                 )
                 .eq(
                     "id",
@@ -134,20 +146,17 @@ export default async function handler(
                 .maybeSingle();
 
 
-        if (
-            profileError
-        ) {
+        if (profileError) {
 
             console.error(
+                "Errore profilo:",
                 profileError
             );
 
-            return res
-                .status(500)
-                .json({
-                    error:
-                        "Impossibile verificare i permessi."
-                });
+            return res.status(500).json({
+                error:
+                    "Errore nel controllo del profilo."
+            });
 
         }
 
@@ -158,29 +167,25 @@ export default async function handler(
             profile.attivo !== true
         ) {
 
-            return res
-                .status(403)
-                .json({
-                    error:
-                        "Non hai i permessi di amministratore."
-                });
+            return res.status(403).json({
+                error:
+                    "Non hai i permessi di amministratore."
+            });
 
         }
 
 
         // ==================================================
-        // GET → ELENCO UTENTI
+        // GET - ELENCO UTENTI
         // ==================================================
 
-        if (
-            req.method === "GET"
-        ) {
+        if (req.method === "GET") {
 
             const {
                 data,
                 error
             } =
-                await adminClient.auth.admin
+                await supabaseAdmin.auth.admin
                     .listUsers({
                         page: 1,
                         perPage: 1000
@@ -189,54 +194,82 @@ export default async function handler(
 
             if (error) {
 
-                return res
-                    .status(500)
-                    .json({
-                        error:
-                            error.message
-                    });
+                console.error(
+                    "Errore elenco utenti:",
+                    error
+                );
+
+                return res.status(500).json({
+                    error:
+                        "Impossibile caricare gli utenti."
+                });
 
             }
 
 
-            return res
-                .status(200)
-                .json({
-                    users:
-                        data.users
-                });
+            return res.status(200).json({
+
+                users:
+                    data.users.map(
+                        user => ({
+
+                            id:
+                                user.id,
+
+                            email:
+                                user.email,
+
+                            email_confirmed_at:
+                                user.email_confirmed_at,
+
+                            created_at:
+                                user.created_at,
+
+                            last_sign_in_at:
+                                user.last_sign_in_at
+
+                        })
+                    )
+
+            });
 
         }
 
 
         // ==================================================
-        // POST → CREA UTENTE
+        // POST - CREA UTENTE
         // ==================================================
 
-        if (
-            req.method === "POST"
-        ) {
+        if (req.method === "POST") {
 
-            const {
-                action,
-                email,
-                password
-            } =
+            const body =
                 req.body || {};
 
 
             if (
-                action !== "create"
+                body.action !== "create"
             ) {
 
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Azione non valida."
-                    });
+                return res.status(400).json({
+                    error:
+                        "Azione non valida."
+                });
 
             }
+
+
+            const email =
+                String(
+                    body.email || ""
+                )
+                .trim()
+                .toLowerCase();
+
+
+            const password =
+                String(
+                    body.password || ""
+                );
 
 
             if (
@@ -244,12 +277,10 @@ export default async function handler(
                 !password
             ) {
 
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Email e password sono obbligatorie."
-                    });
+                return res.status(400).json({
+                    error:
+                        "Email e password sono obbligatorie."
+                });
 
             }
 
@@ -258,21 +289,23 @@ export default async function handler(
                 password.length < 6
             ) {
 
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "La password deve contenere almeno 6 caratteri."
-                    });
+                return res.status(400).json({
+                    error:
+                        "La password deve contenere almeno 6 caratteri."
+                });
 
             }
 
+
+            // ------------------------------------------
+            // CREA ACCOUNT SUPABASE
+            // ------------------------------------------
 
             const {
                 data,
                 error
             } =
-                await adminClient.auth.admin
+                await supabaseAdmin.auth.admin
                     .createUser({
 
                         email:
@@ -289,26 +322,29 @@ export default async function handler(
 
             if (error) {
 
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            error.message
-                    });
+                console.error(
+                    "Errore creazione utente:",
+                    error
+                );
+
+                return res.status(400).json({
+                    error:
+                        error.message
+                });
 
             }
 
 
-            // Crea anche il profilo
-            // dell'utente
+            // ------------------------------------------
+            // CREA PROFILO
+            // ------------------------------------------
 
-            if (
-                data.user
-            ) {
-
-                await adminClient
+            const {
+                error: profileInsertError
+            } =
+                await supabaseAdmin
                     .from("profili")
-                    .upsert({
+                    .insert({
 
                         id:
                             data.user.id,
@@ -324,199 +360,55 @@ export default async function handler(
 
                     });
 
-            }
 
+            if (profileInsertError) {
 
-            return res
-                .status(201)
-                .json({
-
-                    success:
-                        true,
-
-                    user:
-                        data.user
-
-                });
-
-        }
-
-
-        // ==================================================
-        // DELETE → ELIMINA UTENTE
-        // ==================================================
-
-        if (
-            req.method === "DELETE"
-        ) {
-
-            const userId =
-                req.body?.userId;
-
-
-            if (
-                !userId
-            ) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "ID utente mancante."
-                    });
-
-            }
-
-
-            // Impedisce all'admin
-            // di eliminare se stesso
-
-            if (
-                userId === user.id
-            ) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Non puoi eliminare il tuo stesso account."
-                    });
-
-            }
-
-
-            const {
-                error
-            } =
-                await adminClient.auth.admin
-                    .deleteUser(
-                        userId
-                    );
-
-
-            if (error) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            error.message
-                    });
-
-            }
-
-
-            // Elimina anche il profilo
-
-            await adminClient
-                .from("profili")
-                .delete()
-                .eq(
-                    "id",
-                    userId
+                console.error(
+                    "Errore creazione profilo:",
+                    profileInsertError
                 );
 
 
-            return res
-                .status(200)
-                .json({
+                // Se il profilo non viene creato,
+                // eliminiamo anche l'account appena creato.
 
-                    success:
-                        true
-
-                });
-
-        }
-
-
-        // ==================================================
-        // PATCH → ATTIVA / DISATTIVA UTENTE
-        // ==================================================
-
-        if (
-            req.method === "PATCH"
-        ) {
-
-            const {
-                userId,
-                attivo
-            } =
-                req.body || {};
-
-
-            if (
-                !userId ||
-                typeof attivo !==
-                    "boolean"
-            ) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Dati non validi."
-                    });
-
-            }
-
-
-            // Non permettere
-            // di disattivare se stesso
-
-            if (
-                userId === user.id
-            ) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            "Non puoi disattivare il tuo stesso account."
-                    });
-
-            }
-
-
-            const {
-                error
-            } =
-                await adminClient
-                    .from("profili")
-                    .update({
-
-                        attivo:
-                            attivo
-
-                    })
-                    .eq(
-                        "id",
-                        userId
+                await supabaseAdmin.auth.admin
+                    .deleteUser(
+                        data.user.id
                     );
 
 
-            if (error) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            error.message
-                    });
+                return res.status(500).json({
+                    error:
+                        "Account creato ma impossibile creare il profilo."
+                });
 
             }
 
 
-            return res
-                .status(200)
-                .json({
+            // ------------------------------------------
+            // RISPOSTA
+            // ------------------------------------------
 
-                    success:
-                        true,
+            return res.status(201).json({
 
-                    attivo:
-                        attivo
+                success:
+                    true,
 
-                });
+                message:
+                    "Account creato correttamente.",
+
+                user: {
+
+                    id:
+                        data.user.id,
+
+                    email:
+                        data.user.email
+
+                }
+
+            });
 
         }
 
@@ -527,17 +419,14 @@ export default async function handler(
             error
         );
 
+        return res.status(500).json({
 
-        return res
-            .status(500)
-            .json({
+            error:
+                error.message ||
+                "Errore interno del server."
 
-                error:
-                    error.message ||
-                    "Errore interno del server."
-
-            });
+        });
 
     }
 
-}
+};
