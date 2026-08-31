@@ -11,7 +11,10 @@
 
 <body>
 
+    <!-- ========================= -->
     <!-- LOGIN -->
+    <!-- ========================= -->
+
     <section id="loginView" class="login-container">
 
         <div class="login-box">
@@ -59,15 +62,22 @@
     </section>
 
 
+    <!-- ========================= -->
     <!-- PANNELLO -->
+    <!-- ========================= -->
+
     <section id="appView" class="hidden">
 
         <header class="topbar">
 
             <div>
-                <h1>🗄️ Il mio database</h1>
+
+                <h1>
+                    🗄️ Il mio database
+                </h1>
 
                 <p id="userEmail"></p>
+
             </div>
 
             <button
@@ -83,10 +93,117 @@
         <main class="content">
 
 
-            <!-- AGGIUNGI -->
+            <!-- ========================= -->
+            <!-- GESTIONE UTENTI ADMIN -->
+            <!-- ========================= -->
+
+            <section
+                id="adminPanel"
+                class="card hidden"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <h2>
+                            👑 Gestione utenti
+                        </h2>
+
+                        <p>
+                            Gestisci gli account e i permessi.
+                        </p>
+
+                    </div>
+
+                    <button
+                        id="refreshUsersBtn"
+                        class="secondary"
+                        type="button"
+                    >
+                        🔄 Aggiorna
+                    </button>
+
+                </div>
+
+
+                <!-- CREAZIONE UTENTE -->
+
+                <div class="admin-create">
+
+                    <h3>
+                        ➕ Crea nuovo account
+                    </h3>
+
+                    <form id="createUserForm">
+
+                        <label for="newUserEmail">
+                            Email
+                        </label>
+
+                        <input
+                            id="newUserEmail"
+                            type="email"
+                            placeholder="email@example.com"
+                            required
+                        >
+
+                        <label for="newUserPassword">
+                            Password iniziale
+                        </label>
+
+                        <input
+                            id="newUserPassword"
+                            type="password"
+                            minlength="6"
+                            placeholder="Minimo 6 caratteri"
+                            required
+                        >
+
+                        <button type="submit">
+                            👤 Crea account
+                        </button>
+
+                    </form>
+
+                    <p
+                        id="createUserMessage"
+                        class="message"
+                    ></p>
+
+                </div>
+
+
+                <!-- ELENCO UTENTI -->
+
+                <div class="admin-users">
+
+                    <h3>
+                        👥 Utenti
+                    </h3>
+
+                    <div id="usersList">
+
+                        <p class="loading">
+                            Caricamento utenti...
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- ========================= -->
+            <!-- AGGIUNGI DATO -->
+            <!-- ========================= -->
+
             <section class="card">
 
-                <h2>➕ Aggiungi dato</h2>
+                <h2>
+                    ➕ Aggiungi dato
+                </h2>
 
                 <form id="dataForm">
 
@@ -102,7 +219,6 @@
                         required
                     >
 
-
                     <label for="informazioni">
                         Informazioni
                     </label>
@@ -114,34 +230,41 @@
                         maxlength="5000"
                     ></textarea>
 
-
                     <button type="submit">
                         💾 Salva dato
                     </button>
 
                 </form>
 
-                <p id="dataMessage" class="message"></p>
+                <p
+                    id="dataMessage"
+                    class="message"
+                ></p>
 
             </section>
 
 
-            <!-- ELENCO -->
+            <!-- ========================= -->
+            <!-- ELENCO DATI -->
+            <!-- ========================= -->
+
             <section class="card">
 
                 <div class="section-header">
 
-                    <h2>📋 I miei dati</h2>
+                    <h2>
+                        📋 I miei dati
+                    </h2>
 
                     <button
                         id="refreshBtn"
                         class="secondary"
+                        type="button"
                     >
                         🔄 Aggiorna
                     </button>
 
                 </div>
-
 
                 <div id="dataList">
 
@@ -158,7 +281,9 @@
     </section>
 
 
+    <!-- ========================= -->
     <!-- FINESTRA MODIFICA -->
+    <!-- ========================= -->
 
     <div
         id="editModal"
@@ -169,7 +294,9 @@
 
             <div class="modal-header">
 
-                <h2>✏️ Modifica dato</h2>
+                <h2>
+                    ✏️ Modifica dato
+                </h2>
 
                 <button
                     id="closeModalBtn"
@@ -195,7 +322,6 @@
                     required
                 >
 
-
                 <label for="editInformazioni">
                     Informazioni
                 </label>
@@ -205,7 +331,6 @@
                     rows="7"
                     maxlength="5000"
                 ></textarea>
-
 
                 <div class="modal-actions">
 
@@ -217,9 +342,7 @@
                         Annulla
                     </button>
 
-                    <button
-                        type="submit"
-                    >
+                    <button type="submit">
                         💾 Salva modifiche
                     </button>
 
@@ -237,10 +360,16 @@
     </div>
 
 
+    <!-- ========================= -->
     <!-- SUPABASE -->
+    <!-- ========================= -->
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <!-- ========================= -->
     <!-- PROGRAMMA -->
+    <!-- ========================= -->
+
     <script src="app.js"></script>
 
 </body>
