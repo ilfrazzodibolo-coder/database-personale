@@ -5,17 +5,14 @@
 const SUPABASE_URL =
     "https://gsokxkjrodcuwqxsybje.supabase.co";
 
-
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_qrnRxLCNWSRVxwsDui7_7Q_iiiJ53aa";
-
 
 const client =
     window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_PUBLISHABLE_KEY
     );
-
 
 
 // ======================================================
@@ -41,7 +38,6 @@ const logoutBtn =
     document.getElementById("logoutBtn");
 
 
-
 // ======================================================
 // ELEMENTI DATI
 // ======================================================
@@ -57,7 +53,6 @@ const dataList =
 
 const refreshBtn =
     document.getElementById("refreshBtn");
-
 
 
 // ======================================================
@@ -85,23 +80,88 @@ const closeModalBtn =
 const cancelEditBtn =
     document.getElementById("cancelEditBtn");
 
-
-// ID del dato che stiamo modificando
-
 let editingId = null;
 
 
+// ======================================================
+// ELEMENTI ADMIN
+// ======================================================
+
+const adminPanel =
+    document.getElementById("adminPanel");
+
+const createUserForm =
+    document.getElementById("createUserForm");
+
+const createUserMessage =
+    document.getElementById("createUserMessage");
+
+const usersList =
+    document.getElementById("usersList");
+
+const refreshUsersBtn =
+    document.getElementById("refreshUsersBtn");
+
 
 // ======================================================
-// FUNZIONE MESSAGGI
+// VARIABILI
+// ======================================================
+
+let currentUser = null;
+let currentProfile = null;
+
+
+// ======================================================
+// MESSAGGI
 // ======================================================
 
 function showMessage(element, text) {
 
-    element.textContent = text;
+    if (!element) {
+        return;
+    }
 
+    element.textContent = text;
 }
 
+
+// ======================================================
+// CONTROLLO ADMIN
+// ======================================================
+
+async function loadCurrentProfile(userId) {
+
+    const {
+        data,
+        error
+    } = await client
+        .from("profili")
+        .select("id, email, ruolo, attivo")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error) {
+
+        console.error(
+            "Errore profilo:",
+            error
+        );
+
+        return null;
+    }
+
+    return data;
+}
+
+
+function isAdmin() {
+
+    return (
+        currentProfile &&
+        currentProfile.ruolo === "admin" &&
+        currentProfile.attivo === true
+    );
+}
 
 
 // ======================================================
@@ -113,25 +173,20 @@ async function loadData() {
     dataList.innerHTML =
         "<p class='loading'>Caricamento...</p>";
 
-
     const {
         data,
         error
     } = await client
-
         .from("dati_personali")
-
         .select(
             "id, nome, informazioni, user_id"
         )
-
         .order(
             "id",
             {
                 ascending: false
             }
         );
-
 
     if (error) {
 
@@ -159,9 +214,7 @@ async function loadData() {
     dataList.innerHTML = "";
 
 
-    data.forEach(row => {
-
-        // Contenitore
+    for (const row of data) {
 
         const item =
             document.createElement("article");
@@ -170,16 +223,12 @@ async function loadData() {
             "data-item";
 
 
-        // Nome
-
         const title =
             document.createElement("h3");
 
         title.textContent =
             row.nome;
 
-
-        // Informazioni
 
         const information =
             document.createElement("p");
@@ -188,8 +237,6 @@ async function loadData() {
             row.informazioni || "";
 
 
-        // Pulsanti
-
         const actions =
             document.createElement("div");
 
@@ -197,9 +244,9 @@ async function loadData() {
             "actions";
 
 
-        // ------------------------------
+        // ==========================================
         // MODIFICA
-        // ------------------------------
+        // ==========================================
 
         const editButton =
             document.createElement("button");
@@ -213,16 +260,15 @@ async function loadData() {
         editButton.textContent =
             "✏️ Modifica";
 
-
         editButton.addEventListener(
             "click",
             () => openEditModal(row)
         );
 
 
-        // ------------------------------
+        // ==========================================
         // ELIMINA
-        // ------------------------------
+        // ==========================================
 
         const deleteButton =
             document.createElement("button");
@@ -235,7 +281,6 @@ async function loadData() {
 
         deleteButton.textContent =
             "🗑️ Elimina";
-
 
         deleteButton.addEventListener(
             "click",
@@ -257,15 +302,12 @@ async function loadData() {
 
 
         dataList.appendChild(item);
-
-    });
-
+    }
 }
 
 
-
 // ======================================================
-// APRI FINESTRA MODIFICA
+// APRI MODIFICA
 // ======================================================
 
 function openEditModal(row) {
@@ -273,34 +315,27 @@ function openEditModal(row) {
     editingId =
         row.id;
 
-
     editNome.value =
         row.nome || "";
 
-
     editInformazioni.value =
         row.informazioni || "";
-
 
     showMessage(
         editMessage,
         ""
     );
 
-
     editModal.classList.remove(
         "hidden"
     );
 
-
     editNome.focus();
-
 }
 
 
-
 // ======================================================
-// CHIUDI FINESTRA MODIFICA
+// CHIUDI MODIFICA
 // ======================================================
 
 function closeEditModal() {
@@ -308,26 +343,21 @@ function closeEditModal() {
     editingId =
         null;
 
-
     editForm.reset();
-
 
     showMessage(
         editMessage,
         ""
     );
 
-
     editModal.classList.add(
         "hidden"
     );
-
 }
 
 
-
 // ======================================================
-// PULSANTI CHIUSURA
+// PULSANTI MODIFICA
 // ======================================================
 
 closeModalBtn.addEventListener(
@@ -335,17 +365,11 @@ closeModalBtn.addEventListener(
     closeEditModal
 );
 
-
 cancelEditBtn.addEventListener(
     "click",
     closeEditModal
 );
 
-
-
-// ======================================================
-// CHIUDI CLICCANDO FUORI DALLA FINESTRA
-// ======================================================
 
 editModal.addEventListener(
     "click",
@@ -363,7 +387,6 @@ editModal.addEventListener(
 );
 
 
-
 // ======================================================
 // SALVA MODIFICA
 // ======================================================
@@ -376,14 +399,12 @@ editForm.addEventListener(
 
 
         if (!editingId) {
-
             return;
         }
 
 
         const nome =
             editNome.value.trim();
-
 
         const informazioni =
             editInformazioni.value.trim();
@@ -409,19 +430,11 @@ editForm.addEventListener(
         const {
             error
         } = await client
-
             .from("dati_personali")
-
             .update({
-
-                nome:
-                    nome,
-
-                informazioni:
-                    informazioni
-
+                nome: nome,
+                informazioni: informazioni
             })
-
             .eq(
                 "id",
                 editingId
@@ -455,7 +468,6 @@ editForm.addEventListener(
 );
 
 
-
 // ======================================================
 // ELIMINA DATO
 // ======================================================
@@ -469,7 +481,6 @@ async function deleteData(id) {
 
 
     if (!confirmation) {
-
         return;
     }
 
@@ -477,11 +488,8 @@ async function deleteData(id) {
     const {
         error
     } = await client
-
         .from("dati_personali")
-
         .delete()
-
         .eq(
             "id",
             id
@@ -506,9 +514,7 @@ async function deleteData(id) {
 
 
     await loadData();
-
 }
-
 
 
 // ======================================================
@@ -545,11 +551,9 @@ loginForm.addEventListener(
             error
         } = await client.auth.signInWithPassword({
 
-            email:
-                email,
+            email: email,
 
-            password:
-                password
+            password: password
 
         });
 
@@ -579,7 +583,6 @@ loginForm.addEventListener(
 
     }
 );
-
 
 
 // ======================================================
@@ -632,22 +635,28 @@ dataForm.addEventListener(
                 .trim();
 
 
+        if (!nome) {
+
+            showMessage(
+                dataMessage,
+                "Il nome è obbligatorio."
+            );
+
+            return;
+        }
+
+
         const {
             error
         } = await client
-
             .from("dati_personali")
-
             .insert({
 
-                nome:
-                    nome,
+                nome: nome,
 
-                informazioni:
-                    informazioni,
+                informazioni: informazioni,
 
-                user_id:
-                    user.id
+                user_id: user.id
 
             });
 
@@ -679,7 +688,6 @@ dataForm.addEventListener(
 );
 
 
-
 // ======================================================
 // LOGOUT
 // ======================================================
@@ -690,15 +698,17 @@ logoutBtn.addEventListener(
 
         await client.auth.signOut();
 
+        currentUser = null;
+        currentProfile = null;
+
         await updateInterface();
 
     }
 );
 
 
-
 // ======================================================
-// AGGIORNA
+// AGGIORNA DATI
 // ======================================================
 
 refreshBtn.addEventListener(
@@ -706,6 +716,295 @@ refreshBtn.addEventListener(
     loadData
 );
 
+
+// ======================================================
+// API ADMIN
+// ======================================================
+
+async function adminRequest(
+    method,
+    body = null
+) {
+
+    const {
+        data: {
+            session
+        }
+    } =
+        await client.auth.getSession();
+
+
+    if (
+        !session ||
+        !session.access_token
+    ) {
+
+        throw new Error(
+            "Sessione non valida."
+        );
+    }
+
+
+    const options = {
+
+        method: method,
+
+        headers: {
+
+            "Authorization":
+                "Bearer " +
+                session.access_token,
+
+            "Content-Type":
+                "application/json"
+
+        }
+
+    };
+
+
+    if (body) {
+
+        options.body =
+            JSON.stringify(body);
+
+    }
+
+
+    const response =
+        await fetch(
+            "/api/admin/users",
+            options
+        );
+
+
+    const result =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            result.error ||
+            "Errore del server."
+        );
+
+    }
+
+
+    return result;
+}
+
+
+// ======================================================
+// CARICA UTENTI
+// ======================================================
+
+async function loadUsers() {
+
+    if (!isAdmin()) {
+        return;
+    }
+
+
+    usersList.innerHTML =
+        "<p class='loading'>Caricamento utenti...</p>";
+
+
+    try {
+
+        const result =
+            await adminRequest(
+                "GET"
+            );
+
+
+        const users =
+            result.users || [];
+
+
+        if (users.length === 0) {
+
+            usersList.innerHTML =
+                "<p>Nessun utente.</p>";
+
+            return;
+        }
+
+
+        usersList.innerHTML = "";
+
+
+        users.forEach(user => {
+
+            const item =
+                document.createElement(
+                    "div"
+                );
+
+            item.className =
+                "admin-user";
+
+
+            const email =
+                document.createElement(
+                    "strong"
+                );
+
+            email.textContent =
+                user.email || "Senza email";
+
+
+            const status =
+                document.createElement(
+                    "span"
+                );
+
+            status.textContent =
+                user.email_confirmed_at
+                    ? " 🟢 Attivo"
+                    : " 🟡 Email non confermata";
+
+
+            const userId =
+                document.createElement(
+                    "small"
+                );
+
+            userId.textContent =
+                user.id;
+
+
+            item.append(
+                email,
+                status,
+                userId
+            );
+
+
+            usersList.appendChild(
+                item
+            );
+
+        });
+
+
+    } catch (error) {
+
+        usersList.innerHTML = "";
+
+        showMessage(
+            createUserMessage,
+            "Errore utenti: " +
+            error.message
+        );
+
+    }
+}
+
+
+// ======================================================
+// CREA UTENTE
+// ======================================================
+
+createUserForm.addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+
+        if (!isAdmin()) {
+
+            showMessage(
+                createUserMessage,
+                "Non hai i permessi."
+            );
+
+            return;
+        }
+
+
+        const email =
+            document
+                .getElementById(
+                    "newUserEmail"
+                )
+                .value
+                .trim();
+
+
+        const password =
+            document
+                .getElementById(
+                    "newUserPassword"
+                )
+                .value;
+
+
+        if (!email || !password) {
+
+            showMessage(
+                createUserMessage,
+                "Inserisci email e password."
+            );
+
+            return;
+        }
+
+
+        showMessage(
+            createUserMessage,
+            "Creazione account..."
+        );
+
+
+        try {
+
+            await adminRequest(
+                "POST",
+                {
+                    action: "create",
+                    email: email,
+                    password: password
+                }
+            );
+
+
+            createUserForm.reset();
+
+
+            showMessage(
+                createUserMessage,
+                "Account creato! ✅"
+            );
+
+
+            await loadUsers();
+
+
+        } catch (error) {
+
+            showMessage(
+                createUserMessage,
+                "Errore: " +
+                error.message
+            );
+
+        }
+
+    }
+);
+
+
+// ======================================================
+// AGGIORNA UTENTI
+// ======================================================
+
+refreshUsersBtn.addEventListener(
+    "click",
+    loadUsers
+);
 
 
 // ======================================================
@@ -727,6 +1026,31 @@ async function updateInterface() {
         session.user
     ) {
 
+        currentUser =
+            session.user;
+
+
+        currentProfile =
+            await loadCurrentProfile(
+                currentUser.id
+            );
+
+
+        if (
+            currentProfile &&
+            currentProfile.attivo === false
+        ) {
+
+            await client.auth.signOut();
+
+            alert(
+                "Il tuo account è stato disattivato."
+            );
+
+            return;
+        }
+
+
         loginView.classList.add(
             "hidden"
         );
@@ -738,7 +1062,24 @@ async function updateInterface() {
 
 
         userEmail.textContent =
-            session.user.email || "";
+            currentUser.email || "";
+
+
+        if (isAdmin()) {
+
+            adminPanel.classList.remove(
+                "hidden"
+            );
+
+            await loadUsers();
+
+        } else {
+
+            adminPanel.classList.add(
+                "hidden"
+            );
+
+        }
 
 
         await loadData();
@@ -746,6 +1087,10 @@ async function updateInterface() {
     }
 
     else {
+
+        currentUser = null;
+        currentProfile = null;
+
 
         appView.classList.add(
             "hidden"
@@ -757,9 +1102,7 @@ async function updateInterface() {
         );
 
     }
-
 }
-
 
 
 // ======================================================
@@ -773,7 +1116,6 @@ client.auth.onAuthStateChange(
 
     }
 );
-
 
 
 // ======================================================
